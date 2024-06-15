@@ -1,42 +1,24 @@
 <?php
-/**
- * Plugin Name: Dynamic Product Options
- * Description: Adds dynamic product options and quantity discounts with AJAX add-to-cart functionality.[dynamic_product_options product_id="123"]
- * Version: 1.0.0
- * Author: Your Name
- * Text Domain: dynamic-product-options
- */
+/*
+Plugin Name: Dynamic Product Options
+Description: Adds dynamic product options and quantity discounts to WooCommerce products.
+Version: 1.0
+Author: Your Name
+*/
 
 // Exit if accessed directly
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin path
-define('DPO_PLUGIN_PATH', plugin_dir_path(__FILE__));
+// Include required files
+require_once plugin_dir_path(__FILE__) . 'includes/enqueue-scripts.php';
+require_once plugin_dir_path(__FILE__) . 'includes/ajax-handler.php';
 
-// Include AJAX handler
-require_once DPO_PLUGIN_PATH . 'includes/ajax-handler.php';
-
-// Enqueue scripts and styles
-function dpo_enqueue_scripts() {
-    wp_enqueue_style('dpo-styles', plugins_url('assets/css/dynamic-product-options.css', __FILE__));
-    wp_enqueue_script('dpo-scripts', plugins_url('assets/js/dynamic-product-options.js', __FILE__), array('jquery'), null, true);
-    wp_localize_script('dpo-scripts', 'dpo_ajax_params', array(
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('dpo_nonce')
-    ));
-}
-add_action('wp_enqueue_scripts', 'dpo_enqueue_scripts');
-
-// Shortcode to display dynamic product options
-function dpo_dynamic_product_options_shortcode($atts) {
-    $atts = shortcode_atts(array(
-        'product_id' => 0
-    ), $atts, 'dynamic_product_options');
-
+// Register shortcode
+function dynamic_product_options_shortcode($atts) {
+    $atts = shortcode_atts(array('product_id' => 0), $atts, 'dynamic_product_options');
     if (!$atts['product_id']) return 'Product ID is required.';
-
     $product = wc_get_product($atts['product_id']);
     if (!$product) return 'Invalid product ID.';
 
@@ -46,13 +28,18 @@ function dpo_dynamic_product_options_shortcode($atts) {
         <div class="product-form__item">
             <label for="product-option">Options:</label>
             <fieldset id="product-option">
-                <?php foreach ($product->get_attributes() as $attribute) : ?>
-                    <?php if ($attribute->get_variation()) : ?>
-                        <?php foreach ($attribute->get_options() as $option) : ?>
+                <?php
+                $attributes = $product->get_attributes();
+                foreach ($attributes as $attribute) :
+                    if ($attribute->get_variation()) :
+                        foreach ($attribute->get_options() as $option) :
+                            ?>
                             <input type="radio" name="product_option" value="<?php echo esc_attr($option); ?>" data-attribute="<?php echo esc_attr($attribute->get_name()); ?>"> <?php echo esc_html($option); ?>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                <?php endforeach; ?>
+                        <?php
+                        endforeach;
+                    endif;
+                endforeach;
+                ?>
             </fieldset>
         </div>
         <div class="product-single__quantity">
@@ -76,4 +63,4 @@ function dpo_dynamic_product_options_shortcode($atts) {
     <?php
     return ob_get_clean();
 }
-add_shortcode('dynamic_product_options', 'dpo_dynamic_product_options_shortcode');
+add_shortcode('dynamic_product_options', 'dynamic_product_options_shortcode');
